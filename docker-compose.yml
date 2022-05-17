@@ -7,8 +7,8 @@ services:
     environment:
       POSTGRES_USER: testuser
       POSTGRES_PASSWORD: testpass
-      PGPASSWORD: password123
-      POSTGRES_DB: sample
+      PGPASSWORD: testpass
+      POSTGRES_DB: test
       TZ: "Asia/Tokyo"
     ports:
       - 5432:5432
