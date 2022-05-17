@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 
 	_ "github.com/lib/pq"
 )
@@ -15,13 +16,26 @@ const (
 	dbname   = "test"
 )
 
-var dsn = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+var (
+	driver = "postgres"
+	dsn    = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+)
 
 func main() {
-	db, err := sql.Open("postgres", dsn)
+	db, err := sql.Open(driver, dsn)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer db.Close()
 
+	if connects(db) {
+		fmt.Println("Succeed to connect")
+	} else {
+		log.Fatal("Fail to connect")
+	}
+}
+
+func connects(db *sql.DB) bool {
+	err := db.Ping()
+	return err == nil
 }
