@@ -6,6 +6,7 @@ import (
 	"log"
 
 	_ "github.com/lib/pq"
+	// _ "github.com/mattn/go-sqlite3"
 )
 
 const (
@@ -36,25 +37,38 @@ func main() {
 	defer db.Close()
 
 	if connects(db) {
-		fmt.Println("Succeed to connect")
+		log.Println("Succeed to connect.")
 	} else {
-		log.Fatal("Fail to connect")
+		log.Fatal("Fail to connect.")
 	}
 
-	rows, err := db.Query("select id, name from users where id = ?", 1)
+	names, err := getDatabaseNames(db)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Fail to get database names.")
 	}
-	defer rows.Close()
+	log.Println(names)
 
-	for rows.Next() {
-		err := rows.Scan(&id, &name)
+	tableName := "sample"
+	exist := false
+	for _, v := range names {
+		exist = exist || v == tableName
+	}
+
+	if !exist {
+		err = createDatabase(db, tableName)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Println(id, name)
 	}
-	err = rows.Err()
+
+	db.Exec("USE sample")
+
+	sql := `create table Sample (
+id integer, 
+name varchar(10)
+);`
+
+	_, err = db.Exec(sql)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,4 +77,40 @@ func main() {
 func connects(db *sql.DB) bool {
 	err := db.Ping()
 	return err == nil
+}
+
+func getDatabaseNames(db *sql.DB) ([]string, error) {
+	//ここで作ると成功したとしても毎回からスライスが作成されるので良くない。
+	empty := make([]string, 0)
+
+	tx, err := db.Begin()
+	if err != nil {
+		tx.Rollback()
+		return empty, err
+	}
+
+	databases, err := tx.Query("SELECT datname FROM pg_database;")
+	if err != nil {
+		tx.Rollback()
+		return empty, err
+	}
+
+	names := make([]string, 0)
+	for databases.Next() {
+		var tableName string
+		databases.Scan(&tableName)
+		names = append(names, tableName)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return empty, err
+	}
+
+	return names, err
+}
+
+func createDatabase(db *sql.DB, tableName string) error {
+	_, err := db.Exec("CREATE DATABASE " + tableName)
+	return err
 }
